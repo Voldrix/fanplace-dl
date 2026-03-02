@@ -3,7 +3,8 @@ This tool downloads all photos/videos from FanPlace profiles\
 You must be subscribed to the profile to download their content.
 
 fanplace-dl.py will create a directory named after each profile in the `DLDIR` or current working directory if not set.\
-Any existing media will be skipped, not re-downloaded.
+Any existing media will be skipped, not re-downloaded.\
+Will only download newest posts from where you last left off (determined by finding the latest post ID amongst photos and videos in the profile's folder)
 
 #### Requires
 Requires Python3 and 'requests': `python -m pip install requests`

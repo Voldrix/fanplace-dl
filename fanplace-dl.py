@@ -21,8 +21,8 @@ DLDIR = ''
 ByPass = ['']
 
 #Content Types to Download
-VIDEOS = True
 PHOTOS = True
+VIDEOS = True
 
 ######################
 # END CONFIGURATIONS #
@@ -39,7 +39,7 @@ def get_subscriptions():
 
 
 def get_user_info(profile):
-	status = requests.get("https://member7.v4.fanplace.com/user/" + profile, headers={"Authorization": AUTHORIZATION})
+	status = requests.get("https://member10.v4.fanplace.com/user/" + profile, headers={"Authorization": AUTHORIZATION})
 	if not status.ok:
 		print("\nUSER INFO ERROR")
 		return
@@ -50,8 +50,20 @@ def get_user_info(profile):
 	return info['user']
 
 
-def get_photos(PROFILE, profile_id):
-	status = requests.get("https://member7.v4.fanplace.com/user/" + profile_id + "/image", headers={"Authorization": AUTHORIZATION})
+def getLastPost(profile):
+	latest = 0;
+	for dirpath, dirs, files in os.walk(profile):
+		for f in files:
+			post = f.split('_')
+			if len(post) != 2 or not post[0].isdigit():
+				continue
+			post = int(post[0])
+			latest = post if post > latest else latest
+	return latest
+
+
+def get_photos(PROFILE, profile_id, lastPost):
+	status = requests.get("https://member10.v4.fanplace.com/user/" + profile_id + "/image", headers={"Authorization": AUTHORIZATION})
 	if not status.ok:
 		print("\nget_images ERROR")
 		return
@@ -65,6 +77,8 @@ def get_photos(PROFILE, profile_id):
 			pathlib.Path(PROFILE + '/photos').mkdir(parents=True, exist_ok=True)
 
 	for img in images['media']:
+		if img['post'] < lastPost:
+			continue
 		filename = PROFILE + '/photos/' + str(img['post']) + '_' + str(img['id']) + '.' + (img['extension'] or 'jpg')
 		if not os.path.isfile(filename):
 			source = "https://cdn.fanplace.com/" + img['preview']
@@ -84,8 +98,8 @@ def get_photos(PROFILE, profile_id):
 			r.close()
 
 
-def get_videos(PROFILE, profile_id):
-	status = requests.get("https://member7.v4.fanplace.com/user/" + profile_id + "/video", headers={"Authorization": AUTHORIZATION})
+def get_videos(PROFILE, profile_id, lastPost):
+	status = requests.get("https://member10.v4.fanplace.com/user/" + profile_id + "/video", headers={"Authorization": AUTHORIZATION})
 	if not status.ok:
 		print("\nget_videos ERROR")
 		return
@@ -99,6 +113,8 @@ def get_videos(PROFILE, profile_id):
 			pathlib.Path(PROFILE + '/videos').mkdir(parents=True, exist_ok=True)
 
 	for vid in videos['media']:
+		if vid['post'] < lastPost:
+			continue
 		filename = PROFILE + '/videos/' + str(vid['post']) + '_' + str(vid['id']) + '.' + (vid['extension'] or 'mp4')
 		quailty = '480' if vid['q480'] else '240'
 		quailty = '720' if vid['q720'] else quailty
@@ -151,10 +167,12 @@ for PROFILE in PROFILE_LIST:
 
 	PROFILE_ID = str(user_info["id"])
 
-	print("\nDownloading profile: " + PROFILE + "\n")
+	lastPost = getLastPost(PROFILE)
+
+	print("\nDownloading profile: " + PROFILE + " " + str(lastPost) + "\n")
 
 	if PHOTOS:
-		get_photos(PROFILE, PROFILE_ID)
+		get_photos(PROFILE, PROFILE_ID, lastPost)
 	if VIDEOS:
-		get_videos(PROFILE, PROFILE_ID)
+		get_videos(PROFILE, PROFILE_ID, lastPost)
 
