@@ -30,12 +30,12 @@ VIDEOS = True
 
 
 def get_subscriptions():
-	status = requests.get("https://dashboard7.v4.fanplace.com/dashboard/subscriptions", headers={"Authorization": AUTHORIZATION})
+	status = requests.get("https://dashboard11.v4.fanplace.com/dashboard/subscriptions", headers={"Authorization": AUTHORIZATION})
 	if not status.ok:
 		print("\nSUBSCRIPTIONS ERROR")
 		return
 	subs = status.json()
-	return [row['username'] for row in subs['subscriptions']]
+	return [row['username'] for row in subs['subscriptions'] if row['active']]
 
 
 def get_user_info(profile):
@@ -54,8 +54,9 @@ def getLastPost(profile):
 	latest = 0;
 	for dirpath, dirs, files in os.walk(profile):
 		for f in files:
-			post = f.split('_')
-			if len(post) != 2 or not post[0].isdigit():
+			post = f.split('.')[0]
+			post = post.split('_')
+			if len(post) != 2 or not post[0].isdigit() or not post[1].isdigit() or int(post[0]) > 10000000:
 				continue
 			post = int(post[0])
 			latest = post if post > latest else latest
@@ -76,7 +77,7 @@ def get_photos(PROFILE, profile_id, lastPost):
 		if not os.path.isdir(PROFILE + '/photos'):
 			pathlib.Path(PROFILE + '/photos').mkdir(parents=True, exist_ok=True)
 
-	for img in images['media']:
+	for img in reversed(images['media']):
 		if img['post'] < lastPost:
 			continue
 		filename = PROFILE + '/photos/' + str(img['post']) + '_' + str(img['id']) + '.' + (img['extension'] or 'jpg')
@@ -112,7 +113,7 @@ def get_videos(PROFILE, profile_id, lastPost):
 		if not os.path.isdir(PROFILE + '/videos'):
 			pathlib.Path(PROFILE + '/videos').mkdir(parents=True, exist_ok=True)
 
-	for vid in videos['media']:
+	for vid in reversed(videos['media']):
 		if vid['post'] < lastPost:
 			continue
 		filename = PROFILE + '/videos/' + str(vid['post']) + '_' + str(vid['id']) + '.' + (vid['extension'] or 'mp4')
