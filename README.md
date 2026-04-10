@@ -30,9 +30,6 @@ This token changes every time you login, and will need to be updated in the scri
 - Copy the value of the __Authorization__ header (including the word bearer) under __request headers__ on the right
 - Paste into script
 
-#### ToDo
-Content from messages
-
 #### OnlyFans
 [OnlyFans Downloader](https://github.com/Voldrix/onlyfans-dl-2)
 
