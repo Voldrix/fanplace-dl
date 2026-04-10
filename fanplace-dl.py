@@ -23,6 +23,7 @@ ByPass = ['']
 #Content Types to Download
 PHOTOS = True
 VIDEOS = True
+MESSAGES = True
 
 ######################
 # END CONFIGURATIONS #
@@ -81,22 +82,8 @@ def get_photos(PROFILE, profile_id, lastPost):
 		if img['post'] < lastPost:
 			continue
 		filename = PROFILE + '/photos/' + str(img['post']) + '_' + str(img['id']) + '.' + (img['extension'] or 'jpg')
-		if not os.path.isfile(filename):
-			source = "https://cdn.fanplace.com/" + img['preview']
-			try:
-				r = requests.get(source, stream=True, timeout=(4,None), verify=False)
-			except:
-				print('Error getting: ' + source + ' (skipping)')
-				return
-			if r.status_code != 200:
-				print(r.url + ' :: ' + str(r.status_code))
-				return
 
-			with open(filename, 'wb') as f:
-				r.raw.decode_content = True
-				shutil.copyfileobj(r.raw, f)
-				print(filename)
-			r.close()
+		download_media("https://cdn.fanplace.com/" + img['preview'], filename)
 
 
 def get_videos(PROFILE, profile_id, lastPost):
@@ -122,22 +109,63 @@ def get_videos(PROFILE, profile_id, lastPost):
 		quailty = '1080' if vid['q1080'] else quailty
 		quailty = '1440' if vid['q1440'] else quailty
 		quailty = '2160' if vid['q2160'] else quailty
-		if not os.path.isfile(filename):
-			source = "https://cdn.fanplace.com/media/" + profile_id + '/v/' + vid['load_id'] + '/' + quailty + '.' + (vid['extension'] or 'mp4')
-			try:
-				r = requests.get(source, stream=True, timeout=(4,None), verify=False)
-			except:
-				print('Error getting: ' + source + ' (skipping)')
-				return
-			if r.status_code != 200:
-				print(r.url + ' :: ' + str(r.status_code))
-				return
+		source = "https://cdn.fanplace.com/media/" + profile_id + '/v/' + vid['load_id'] + '/' + quailty + '.' + (vid['extension'] or 'mp4')
 
-			with open(filename, 'wb') as f:
-				r.raw.decode_content = True
-				shutil.copyfileobj(r.raw, f)
-				print(filename)
-			r.close()
+		download_media(source, filename)
+
+
+def get_messages(PROFILE, profile_id):
+	paginate = 9999999999
+	status = requests.get("https://chat18.v4.fanplace.com/conversation/" + profile_id + "/" + str(paginate), headers={"Authorization": AUTHORIZATION})
+	if not status.ok:
+		print("\nget_messages ERROR")
+		return
+	msgThread = status.json()
+	if not msgThread['success']:
+		print("\nget_messages FAIL")
+		return
+
+	messages = msgThread['thread']['messages']
+
+	#paginate
+	while len(msgThread['thread']['messages']) == 20:
+		paginate = msgThread['thread']['messages'][19]['id']
+		status = requests.get("https://chat18.v4.fanplace.com/conversation/" + profile_id + "/" + str(paginate), headers={"Authorization": AUTHORIZATION})
+		if not status.ok:
+			break
+		msgThread = status.json()
+		messages.extend(msgThread['thread']['messages'])
+
+	if len(messages) > 0:
+		if not os.path.isdir(PROFILE + '/messages'):
+			pathlib.Path(PROFILE + '/messages').mkdir(parents=True, exist_ok=True)
+
+	for msg in messages:
+		if msg['preview']:
+			msg['media'].append(msg['preview'])
+		for media in msg['media']:
+			filename = PROFILE + '/messages/' + str(msg['id']) + '-' + str(media['id']) + '.' + (media['extension'] or 'jpg')
+
+			download_media(media['image'], filename)
+
+
+def download_media(sourceURL, destFileName):
+	if os.path.isfile(destFileName):
+		return
+	try:
+		r = requests.get(sourceURL, stream=True, timeout=(4,None), verify=False)
+	except:
+		print('Error getting: ' + sourceURL + ' (skipping)')
+		return
+	if r.status_code != 200:
+		print(r.url + ' :: ' + str(r.status_code))
+		return
+
+	with open(destFileName, 'wb') as f:
+		r.raw.decode_content = True
+		shutil.copyfileobj(r.raw, f)
+		print(destFileName)
+	r.close()
 
 
 if len(sys.argv) < 2:
@@ -176,4 +204,6 @@ for PROFILE in PROFILE_LIST:
 		get_photos(PROFILE, PROFILE_ID, lastPost)
 	if VIDEOS:
 		get_videos(PROFILE, PROFILE_ID, lastPost)
+	if MESSAGES:
+		get_messages(PROFILE, PROFILE_ID)
 
